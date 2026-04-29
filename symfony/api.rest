@@ -27,7 +27,7 @@ POST {{baseUrl}}/api/login_check
 Content-Type: application/json
 
 {
-  "username": "jean@test.com",
+  "email": "jean@test.com",
   "password": "azerty123"
 }
 
@@ -197,7 +197,7 @@ POST {{baseUrl}}/api/login_check
 Content-Type: application/json
 
 {
-  "username": "jean@test.com",
+  "email": "jean@test.com",
   "password": "wrong"
 }
 

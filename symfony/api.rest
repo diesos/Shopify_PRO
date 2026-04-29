@@ -1,0 +1,219 @@
+### ─────────────────────────────────────────────
+### Variables globales
+### ─────────────────────────────────────────────
+@baseUrl = http://localhost:8080
+@contentType = application/ld+json
+
+### ═════════════════════════════════════════════
+### 1. AUTH — Register & Login
+### ═════════════════════════════════════════════
+
+### 1.1 Créer un user (PUBLIC) — register
+POST {{baseUrl}}/api/users
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Jean",
+  "lastName": "Dupont",
+  "email": "jean@test.com",
+  "password": "azerty123"
+}
+
+### 1.2 Créer un user admin (à faire en SQL une fois, voir bas du fichier)
+
+### 1.3 Login — récupère le JWT
+# @name login
+POST {{baseUrl}}/api/login_check
+Content-Type: application/json
+
+{
+  "username": "jean@test.com",
+  "password": "azerty123"
+}
+
+### Le token est extrait automatiquement de la réponse du login
+@token = {{login.response.body.token}}
+
+### 1.4 Login admin
+# @name loginAdmin
+POST {{baseUrl}}/api/login_check
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "admin123"
+}
+
+@adminToken = {{loginAdmin.response.body.token}}
+
+
+### ═════════════════════════════════════════════
+### 2. USER — CRUD (auth requise sauf POST register)
+### ═════════════════════════════════════════════
+
+### 2.1 Liste des users (ADMIN only)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{adminToken}}
+
+### 2.2 Get user by id (auth — soi-même ou admin)
+GET {{baseUrl}}/api/users/1
+Authorization: Bearer {{token}}
+
+### 2.3 Update user (PATCH partiel)
+PATCH {{baseUrl}}/api/users/1
+Authorization: Bearer {{token}}
+Content-Type: application/merge-patch+json
+
+{
+  "firstName": "Jean-Pierre"
+}
+
+### 2.4 Delete user (ADMIN only)
+DELETE {{baseUrl}}/api/users/1
+Authorization: Bearer {{adminToken}}
+
+
+### ═════════════════════════════════════════════
+### 3. ROLE — CRUD (ADMIN only)
+### ═════════════════════════════════════════════
+
+### 3.1 Liste des rôles
+GET {{baseUrl}}/api/roles
+Authorization: Bearer {{adminToken}}
+
+### 3.2 Créer un rôle
+POST {{baseUrl}}/api/roles
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "ROLE_MANAGER",
+  "label": "Gestionnaire"
+}
+
+### 3.3 Assigner un rôle à un user (PATCH sur user)
+PATCH {{baseUrl}}/api/users/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/merge-patch+json
+
+{
+  "userRoles": ["/api/roles/1"]
+}
+
+
+### ═════════════════════════════════════════════
+### 4. COACH
+### ═════════════════════════════════════════════
+
+### 4.1 Liste des coachs (PUBLIC)
+GET {{baseUrl}}/api/coaches
+
+### 4.2 Créer un coach (ADMIN only)
+POST {{baseUrl}}/api/coaches
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+  "firstName": "Sophie",
+  "lastName": "Martin",
+  "email": "sophie@coach.com",
+  "phone": "0612345678",
+  "password": "coachpass",
+  "pricePerHour": 50
+}
+
+### 4.3 Get coach by id
+GET {{baseUrl}}/api/coaches/1
+
+
+### ═════════════════════════════════════════════
+### 5. SEANCE
+### ═════════════════════════════════════════════
+
+### 5.1 Liste des séances (PUBLIC)
+GET {{baseUrl}}/api/seances
+
+### 5.2 Créer une séance (ADMIN/COACH only)
+POST {{baseUrl}}/api/seances
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+  "name": "Yoga matinal",
+  "coachId": 1,
+  "maxUser": 10,
+  "startTime": "2026-05-15T09:00:00+02:00",
+  "endTime": "2026-05-15T10:00:00+02:00"
+}
+
+### 5.3 Get séance by id
+GET {{baseUrl}}/api/seances/1
+
+
+### ═════════════════════════════════════════════
+### 6. RESERVATION — auth obligatoire
+### ═════════════════════════════════════════════
+
+### 6.1 Liste mes reservations (auth)
+GET {{baseUrl}}/api/reservations
+Authorization: Bearer {{token}}
+
+### 6.2 Réserver une séance (auth)
+POST {{baseUrl}}/api/reservations
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "userId": 1,
+  "seanceId": 1,
+  "reservationTime": "2026-05-15T09:00:00+02:00"
+}
+
+### 6.3 Annuler une reservation (auth)
+DELETE {{baseUrl}}/api/reservations/1
+Authorization: Bearer {{token}}
+
+
+### ═════════════════════════════════════════════
+### 7. ERREURS — pour vérifier que la sécu marche
+### ═════════════════════════════════════════════
+
+### 7.1 Tenter de réserver sans token → 401
+POST {{baseUrl}}/api/reservations
+Content-Type: {{contentType}}
+
+{
+  "userId": 1,
+  "seanceId": 1,
+  "reservationTime": "2026-05-15T09:00:00+02:00"
+}
+
+### 7.2 User normal qui tente de delete un autre user → 403
+DELETE {{baseUrl}}/api/users/2
+Authorization: Bearer {{token}}
+
+### 7.3 Login avec mauvais password → 401
+POST {{baseUrl}}/api/login_check
+Content-Type: application/json
+
+{
+  "username": "jean@test.com",
+  "password": "wrong"
+}
+
+
+### ═════════════════════════════════════════════
+### NOTES SQL — pour bootstrap les données
+### ═════════════════════════════════════════════
+# Une fois les migrations appliquées, exécute dans le conteneur :
+#
+# docker exec shopify_php php bin/console doctrine:query:sql \
+#   "INSERT INTO role (name, label) VALUES \
+#    ('ROLE_ADMIN', 'Administrateur'), \
+#    ('ROLE_COACH', 'Coach'), \
+#    ('ROLE_USER', 'Utilisateur')"
+#
+# Pour créer un user admin avec password hashé "admin123" :
+# 1. POST /api/users avec password "admin123"
+# 2. Récupère son id (genre 1)
+# 3. INSERT INTO user_role (user_id, role_id) VALUES (1, 1);

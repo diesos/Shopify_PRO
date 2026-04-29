@@ -1,0 +1,53 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: shopify_db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shopify_db
+      MYSQL_USER: shopify_user
+      MYSQL_PASSWORD: shopify_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - shopify_net
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: shopify_php
+    restart: unless-stopped
+    working_dir: /var/www/symfony
+    volumes:
+      - ./symfony:/var/www/symfony
+    depends_on:
+      - db
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: "mysql://shopify_user:shopify_password@db:3306/shopify_db?serverVersion=8.0.32&charset=utf8mb4"
+    networks:
+      - shopify_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: shopify_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./symfony:/var/www/symfony:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - shopify_net
+
+volumes:
+  mysql_data:
+
+networks:
+  shopify_net:

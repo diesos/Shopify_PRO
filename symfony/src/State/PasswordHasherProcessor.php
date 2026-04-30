@@ -10,8 +10,9 @@ use App\Entity\User;
 use App\Repository\RoleRepository;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
-final readonly class UserPasswordHasherProcessor implements ProcessorInterface
+final readonly class PasswordHasherProcessor implements ProcessorInterface
 {
     public function __construct(
         #[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
@@ -29,15 +30,11 @@ final readonly class UserPasswordHasherProcessor implements ProcessorInterface
             return $this->removeProcessor->process($data, $operation, $uriVariables, $context);
         }
 
-        if (!$data instanceof User) {
-            return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
-        }
-
-        if ($data->getPassword()) {
+        if ($data instanceof PasswordAuthenticatedUserInterface && $data->getPassword() && method_exists($data, 'setPassword')) {
             $data->setPassword($this->passwordHasher->hashPassword($data, $data->getPassword()));
         }
 
-        if ($operation instanceof Post && $data->getUserRoles()->isEmpty()) {
+        if ($data instanceof User && $operation instanceof Post && $data->getUserRoles()->isEmpty()) {
             $clientRole = $this->roleRepository->findOneBy(['name' => 'ROLE_CLIENT']);
             if ($clientRole) {
                 $data->addUserRole($clientRole);

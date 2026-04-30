@@ -43,15 +43,33 @@ sleep 20
 
 Pas de healthcheck dans le compose, donc on laisse 20 secondes au container MySQL pour finir son init avant de jouer les migrations.
 
-### 3 · Installer les deps PHP, jouer les migrations, générer les clés JWT
+### 3 · Installer les deps PHP et jouer les migrations
 
 ```bash
 docker exec shopify_php composer install
 docker exec shopify_php php bin/console doctrine:migrations:migrate --no-interaction
-docker exec shopify_php php bin/console lexik:jwt:generate-keypair --skip-if-exists
 ```
 
-Crée le schéma (`user`, `role`, `coach`, `seance`, `reservation`, `user_role`) et les clés RSA dans `symfony/config/jwt/`.
+Crée le schéma : `user`, `role`, `coach`, `seance`, `reservation`, `user_role`.
+
+### 3 bis · Initialiser les secrets JWT (passphrase + clés RSA)
+
+```bash
+docker exec shopify_php php bin/console app:init-jwt
+```
+
+En une seule commande :
+
+- Génère une **passphrase aléatoire** (64 chars hex) et l'écrit dans `symfony/.env.local` (non versionné, créé si absent).
+- Génère les **clés RSA** `config/jwt/private.pem` et `config/jwt/public.pem` chiffrées avec cette passphrase.
+
+Idempotent : si une passphrase existe déjà dans `.env.local`, elle est réutilisée. Pour tout regénérer (et invalider les JWT en circulation) :
+
+```bash
+docker exec shopify_php php bin/console app:init-jwt --force
+```
+
+> Le `.env.local` et les fichiers `.pem` sont dans le `.gitignore` — chaque clone du repo doit relancer cette commande.
 
 ### 4 · Initialiser les rôles applicatifs
 

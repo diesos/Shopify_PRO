@@ -1,0 +1,27 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend (front-end/)
+node_modules/
+dist/
+*.log
+.vite/
+
+# Symfony env locaux (jamais commiter de secrets)
+symfony/.env.local
+symfony/.env.*.local
+symfony/var/
+symfony/vendor/
+
+# Clés JWT (générées localement par app:init-jwt)
+symfony/config/jwt/*.pem
+
+# IDE / outils
+.idea/
+.vscode/
+*.swp
+
+# Anciens fichiers .env historiquement ignorés
+symfony/.env
+symfony/.env.dev

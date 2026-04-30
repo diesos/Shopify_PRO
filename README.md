@@ -205,4 +205,5 @@ docker exec shopify_db mysql -ushopify_user -pshopify_password shopify_db -e \
 - **Backend** : Symfony 7.2 · API Platform 4.1 · Doctrine ORM 3 · MySQL 8 · Lexik JWT 3.2 · Nelmio CORS · PHP 8.2+
 - **Frontend** : React 18 · Vite 5 · axios 1.7 · ESM natif, pas de Babel runtime
 - **Conteneurisation** : Docker Compose (DB + PHP-FPM + Nginx)
-- **Tests** : PHPUnit
+- **Tests** : PHPUnit 
+- ** Swagfer** : http://localhost:8080/api/docs

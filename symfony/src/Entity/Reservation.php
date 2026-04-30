@@ -3,25 +3,49 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
 use App\Repository\ReservationRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ReservationRepository::class)]
-#[ApiResource]
+#[ApiResource(
+    normalizationContext: ['groups' => ['reservation:read']],
+    denormalizationContext: ['groups' => ['reservation:write']],
+    operations: [
+        new GetCollection(security: "is_granted('IS_AUTHENTICATED_FULLY')"),
+        new Get(security: "is_granted('ROLE_ADMIN') or is_granted('ROLE_COACH') or object.getUser() == user"),
+        new Post(security: "is_granted('IS_AUTHENTICATED_FULLY')"),
+        new Delete(security: "is_granted('ROLE_ADMIN') or is_granted('ROLE_COACH') or object.getUser() == user"),
+    ],
+)]
 class Reservation
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['reservation:read'])]
     private ?int $id = null;
 
-    #[ORM\Column]
-    private ?int $userId = null;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', nullable: false)]
+    #[Groups(['reservation:read', 'reservation:write'])]
+    #[Assert\NotNull]
+    private ?User $user = null;
+
+    #[ORM\ManyToOne(targetEntity: Seance::class)]
+    #[ORM\JoinColumn(name: 'seance_id', referencedColumnName: 'id', nullable: false)]
+    #[Groups(['reservation:read', 'reservation:write'])]
+    #[Assert\NotNull]
+    private ?Seance $seance = null;
 
     #[ORM\Column]
-    private ?int $seanceId = null;
-
-    #[ORM\Column]
+    #[Groups(['reservation:read', 'reservation:write'])]
+    #[Assert\NotNull]
     private ?\DateTime $reservationTime = null;
 
     public function getId(): ?int
@@ -29,26 +53,26 @@ class Reservation
         return $this->id;
     }
 
-    public function getUserId(): ?int
+    public function getUser(): ?User
     {
-        return $this->userId;
+        return $this->user;
     }
 
-    public function setUserId(int $userId): static
+    public function setUser(?User $user): static
     {
-        $this->userId = $userId;
+        $this->user = $user;
 
         return $this;
     }
 
-    public function getSeanceId(): ?int
+    public function getSeance(): ?Seance
     {
-        return $this->seanceId;
+        return $this->seance;
     }
 
-    public function setSeanceId(int $seanceId): static
+    public function setSeance(?Seance $seance): static
     {
-        $this->seanceId = $seanceId;
+        $this->seance = $seance;
 
         return $this;
     }

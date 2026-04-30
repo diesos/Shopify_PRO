@@ -1,6 +1,13 @@
 api_platform:
     title: Hello API Platform
     version: 1.0.0
+    formats:
+        json: ['application/json']
+    patch_formats:
+        json: ['application/merge-patch+json']
+    docs_formats:
+        json: ['application/json']
+        html: ['text/html']
     defaults:
         stateless: true
         cache_headers:

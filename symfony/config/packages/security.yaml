@@ -36,8 +36,13 @@ security:
         - { path: ^/api/login_check, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/users$, methods: [POST], roles: PUBLIC_ACCESS }
+        - { path: ^/api/users$, methods: [GET], roles: ROLE_ADMIN }
+        - { path: ^/api/users/\d+$, methods: [DELETE], roles: ROLE_ADMIN }
         - { path: ^/api/coaches, methods: [GET], roles: PUBLIC_ACCESS }
+        - { path: ^/api/coaches, methods: [POST, PATCH, PUT, DELETE], roles: ROLE_ADMIN }
         - { path: ^/api/seances, methods: [GET], roles: PUBLIC_ACCESS }
+        - { path: ^/api/seances, methods: [POST, PATCH, PUT, DELETE], roles: ROLE_ADMIN }
+        - { path: ^/api/roles, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

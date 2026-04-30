@@ -10,19 +10,26 @@ import { api, decodeJWT, isJWTExpired, onUnauthorized, tokenStore, ApiError } fr
 
 const AuthContext = createContext(null);
 
-/* Normalise l'objet user retourné par /api/me */
+/* Normalise l'objet user retourné par /api/me.
+   Note : /api/me sérialise userRoles en IRIs ("/api/roles/3") qui ne portent
+   pas le nom du rôle. On filtre ces IRIs et on retombe sur raw.roles si présent ;
+   à défaut, on laisse roles=null pour que l'appelant fusionne avec le JWT. */
 const userFromApi = (raw) => {
   if (!raw) return null;
-  const roles = Array.isArray(raw.userRoles)
-    ? raw.userRoles.map(r => typeof r === "string" ? r : r.name).filter(Boolean)
-    : (raw.roles || []);
-  if (!roles.includes("ROLE_USER")) roles.push("ROLE_USER");
+  const isIri = (s) => typeof s === "string" && s.startsWith("/");
+  const fromUserRoles = Array.isArray(raw.userRoles)
+    ? raw.userRoles
+        .map(r => (typeof r === "object" && r) ? r.name : (isIri(r) ? null : r))
+        .filter(Boolean)
+    : [];
+  const flat = Array.isArray(raw.roles) ? raw.roles : [];
+  const merged = [...new Set([...fromUserRoles, ...flat])];
   return {
     id: raw.id,
     email: raw.email,
     firstName: raw.firstName,
     lastName: raw.lastName,
-    roles,
+    roles: merged.length ? merged : null,
   };
 };
 
@@ -64,9 +71,18 @@ export const AuthProvider = ({ children }) => {
       setBootstrapping(false);
       return;
     }
-    setUser(userFromJWT(payload));
+    const jwtUser = userFromJWT(payload);
+    setUser(jwtUser);
     api.get("/api/me")
-      .then(raw => setUser(userFromApi(raw)))
+      .then(raw => {
+        const apiUser = userFromApi(raw);
+        if (!apiUser) return;
+        // Les rôles du JWT font foi (ce sont ceux qu'utilise le firewall).
+        // /api/me ne renvoie que des IRIs côté userRoles → inexploitables ici.
+        const roles = apiUser.roles ?? jwtUser.roles ?? ["ROLE_USER"];
+        if (!roles.includes("ROLE_USER")) roles.push("ROLE_USER");
+        setUser({ ...apiUser, roles: jwtUser.roles?.length ? jwtUser.roles : roles });
+      })
       .catch(err => {
         if (err.status === 401) {
           tokenStore.clear();

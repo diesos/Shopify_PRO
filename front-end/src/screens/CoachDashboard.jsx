@@ -111,7 +111,7 @@ export const CoachDashboard = ({ go }) => {
               <span className={`badge ${remaining === 0 ? "danger" : remaining <= 2 ? "warn" : "success"} dot`}>
                 {booked}/{s.maxUser}
               </span>
-              <Button variant="quiet" size="sm" icon="edit">Gérer</Button>
+              <Button variant="quiet" size="sm" icon="edit" onClick={() => go(`/coach/seance/${s.id}/edit`)}>Gérer</Button>
             </div>
           );
         })}

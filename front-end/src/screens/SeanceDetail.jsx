@@ -73,6 +73,9 @@ export const SeanceDetail = ({ go, seanceId, onReserved }) => {
     const uid = typeof r.user === "string" ? Number(r.user.split("/").pop()) : r.user?.id;
     return uid === auth.user.id;
   });
+  // Le coach de la séance ne peut pas s'y inscrire (lien fait par email,
+  // cohérent avec la logique du dashboard coach et du SeanceForm).
+  const isOwnSeance = !!(auth.user && coach && coach.email && coach.email === auth.user.email);
 
   const reserve = async () => {
     if (!auth.user) { go("/login"); return; }
@@ -184,7 +187,20 @@ export const SeanceDetail = ({ go, seanceId, onReserved }) => {
             </div>
 
             <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-              {myReservation ? (
+              {isOwnSeance ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "var(--accent-soft)", color: "var(--accent-ink)", borderRadius: "var(--r-2)", fontSize: 13 }}>
+                    <Icon name="users" size={16} />
+                    <div>
+                      <div style={{ fontWeight: 500 }}>C'est ta séance</div>
+                      <div className="t-mono" style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>tu ne peux pas y être inscrit comme participant</div>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="lg" block icon="edit" onClick={() => go(`/coach/seance/${seance.id}/edit`)}>
+                    Gérer cette séance
+                  </Button>
+                </>
+              ) : myReservation ? (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "var(--success-bg)", color: "var(--success)", borderRadius: "var(--r-2)", fontSize: 13 }}>
                     <Icon name="check" size={16} stroke={2} />

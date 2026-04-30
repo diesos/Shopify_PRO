@@ -72,6 +72,7 @@ export const App = () => {
 
   const seanceMatch = route.match(/^\/seances\/(\d+)$/);
   const coachMatch  = route.match(/^\/coaches\/(\d+)$/);
+  const seanceEditMatch = route.match(/^\/coach\/seance\/(\d+)\/edit$/);
 
   const guarded = (element, roles) => (
     <RequireAuth go={go} roles={roles}>{element}</RequireAuth>
@@ -90,6 +91,7 @@ export const App = () => {
   else if (route === "/me/reservations")    page = guarded(<MesReservations go={go} />, ["ROLE_USER"]);
   else if (route === "/coach")              { page = guarded(<CoachDashboard go={go} />, ["ROLE_COACH", "ROLE_ADMIN"]); chrome = "staff"; }
   else if (route === "/coach/seance/new")   { page = guarded(<SeanceForm go={go} />,     ["ROLE_COACH", "ROLE_ADMIN"]); chrome = "staff"; }
+  else if (seanceEditMatch)                 { page = guarded(<SeanceForm go={go} seanceId={Number(seanceEditMatch[1])} />, ["ROLE_COACH", "ROLE_ADMIN"]); chrome = "staff"; }
   else if (route === "/admin")              { page = guarded(<AdminDashboard go={go} />, ["ROLE_ADMIN"]);                chrome = "staff"; }
   else                                  page = <NotFound go={go} />;
 

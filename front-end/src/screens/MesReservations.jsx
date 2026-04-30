@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, iri } from "../api/client.js";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { useToast } from "../components/Toast.jsx";
 import { Button } from "../components/Button.jsx";
 import { Avatar } from "../components/Avatar.jsx";
@@ -10,6 +11,7 @@ import { fmt } from "../lib/fmt.js";
 const idFromIri = (s) => typeof s === "string" ? Number(s.split("/").pop()) : s?.id;
 
 export const MesReservations = ({ go }) => {
+  const auth = useAuth();
   const toast = useToast();
   const [reservations, setReservations] = useState([]);
   const [seances, setSeances] = useState([]);
@@ -38,12 +40,19 @@ export const MesReservations = ({ go }) => {
 
   useEffect(() => { reload(); }, []);
 
-  const enriched = reservations.map(r => {
-    const sid = idFromIri(r.seance);
-    const seance = seances.find(s => s.id === sid);
-    const coach = seance && coaches.find(c => c.id === seance.coachId);
-    return { ...r, seance, coach };
-  }).filter(r => r.seance);
+  /* /api/reservations renvoie TOUTES les réservations à tout user authentifié
+     (cf. ApiResource GetCollection security IS_AUTHENTICATED_FULLY).
+     On filtre côté front sur l'id du user connecté. */
+  const myId = auth.user?.id ?? null;
+  const enriched = reservations
+    .filter(r => myId != null && idFromIri(r.user) === myId)
+    .map(r => {
+      const sid = idFromIri(r.seance);
+      const seance = seances.find(s => s.id === sid);
+      const coach = seance && coaches.find(c => c.id === seance.coachId);
+      return { ...r, seance, coach };
+    })
+    .filter(r => r.seance);
 
   const now = new Date();
   const upcoming = enriched.filter(r => new Date(r.seance.startTime) > now);

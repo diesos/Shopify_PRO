@@ -1,165 +1,190 @@
-# Shopify PRO — Backend Symfony + JWT
+# Sportify Pro
 
-Stack : Symfony 7.2 · API Platform 4.1 · MySQL 8 · Lexik JWT · Docker.
+Plateforme de coaching sportif. Backend Symfony + API Platform + JWT, frontend React + Vite.
+
+```
+Shopify_PRO/
+├── symfony/        # API REST (Symfony 7.2 · API Platform 4 · Lexik JWT · MySQL)
+├── front-end/      # SPA React 18 + Vite
+├── docker/         # Dockerfile PHP + nginx.conf
+├── docker-compose.yml
+├── README.md       # ce fichier
+└── SOUTENANCE.md   # dossier de soutenance (choix techniques + justifications)
+```
 
 ---
 
-## 1. Lancer Docker
+## Bootstrap complet — du clone au login
 
-Depuis la racine du projet (`Shopify_PRO/`) :
+À faire dans cet ordre, depuis la racine `Shopify_PRO/`.
+
+### 1 · Lancer Docker (backend + DB)
 
 ```bash
-docker compose up -d --build
+docker compose up --build -d
 ```
 
 Ça démarre 3 conteneurs :
 
-| Service | Container         | Port host → conteneur | Rôle                |
-|---------|-------------------|-----------------------|---------------------|
-| `db`    | `shopify_db`      | **3307** → 3306       | MySQL 8             |
-| `php`   | `shopify_php`     | —                     | PHP-FPM + Symfony   |
-| `nginx` | `shopify_nginx`   | 8080 → 80             | Reverse-proxy HTTP  |
+| Service | Container       | Port host → conteneur | Rôle               |
+|---------|-----------------|-----------------------|--------------------|
+| `db`    | `shopify_db`    | **3307** → 3306       | MySQL 8            |
+| `php`   | `shopify_php`   | —                     | PHP-FPM + Symfony  |
+| `nginx` | `shopify_nginx` | **8080** → 80         | Reverse-proxy HTTP |
 
-> Note : MySQL est mappé sur **3307** côté host pour éviter le conflit avec
-> un MySQL local éventuellement installé sur le port 3306.
-> Côté réseau Docker interne, MySQL reste accessible en `db:3306` (c'est ce
-> qu'utilise `DATABASE_URL` dans le `.env`).
+> MySQL est mappé sur le port **3307** côté host pour ne pas heurter un MySQL local sur 3306.
+> En interne, MySQL reste joignable en `db:3306` (c'est ce qu'utilise `DATABASE_URL`).
 
-Vérifier que tout tourne :
+### 2 · Attendre que MySQL soit prêt
 
 ```bash
-docker ps
+sleep 20
 ```
 
-L'API est accessible sur **http://localhost:8080**.
+Pas de healthcheck dans le compose, donc on laisse 20 secondes au container MySQL pour finir son init avant de jouer les migrations.
 
----
-
-## 2. Initialiser le backend
-
-### 2.1 Installer les dépendances PHP
+### 3 · Installer les deps PHP, jouer les migrations, générer les clés JWT
 
 ```bash
 docker exec shopify_php composer install
-```
-
-### 2.2 Jouer les migrations Doctrine
-
-Crée le schéma `user`, `role`, `coach`, `seance`, `reservation`, etc.
-
-```bash
 docker exec shopify_php php bin/console doctrine:migrations:migrate --no-interaction
-```
-
-### 2.3 Générer les clés JWT (une fois)
-
-```bash
 docker exec shopify_php php bin/console lexik:jwt:generate-keypair --skip-if-exists
 ```
 
-Les clés sont créées dans `symfony/config/jwt/` (ignorées par git).
+Crée le schéma (`user`, `role`, `coach`, `seance`, `reservation`, `user_role`) et les clés RSA dans `symfony/config/jwt/`.
+
+### 4 · Initialiser les rôles applicatifs
+
+`POST /api/users` rattache automatiquement `ROLE_CLIENT` au nouveau compte → ce rôle **doit exister en base avant le premier register**.
+
+```bash
+docker exec -i shopify_db mysql -ushopify_user -pshopify_password shopify_db < symfony/sql/init_roles.sql
+```
+
+Insère `ROLE_ADMIN`, `ROLE_COACH`, `ROLE_CLIENT`. Idempotent (`ON DUPLICATE KEY UPDATE`), tu peux le relancer.
+
+### 5 · Seed des données de démo
+
+```bash
+docker exec shopify_php php bin/console app:seed-dummy
+```
+
+Insère :
+
+- **1 admin**
+- **5 coachs** (entité `Coach` + `User` miroir avec `ROLE_COACH` → permet la connexion via Lexik)
+- **5 clients**
+- **5 séances** (1 par coach, dates échelonnées sur la semaine à venir)
+- **5 réservations** (chaque client est inscrit à une séance différente)
+
+La commande est idempotente (vérifie chaque email avant insert). Pour repartir d'une base propre :
+
+```bash
+docker exec shopify_php php bin/console app:seed-dummy --fresh
+```
+
+### 6 · Lancer le frontend
+
+```bash
+cd front-end
+npm install
+npm run dev
+```
+
+Vite démarre le serveur de dev sur **http://localhost:5173**. Le frontend tape directement sur **http://localhost:8080** (l'API Symfony) — l'URL est codée en dur dans `front-end/src/api/client.js` (`API_BASE`).
+
+CORS est déjà autorisé sur les origines `localhost:*` côté Symfony (`nelmio_cors.yaml`).
 
 ---
 
-## 3. Initialiser les rôles en base
+## Comptes de démo
 
-`POST /api/users` assigne automatiquement `ROLE_CLIENT` au nouveau user → ce
-rôle **doit exister en base** avant le premier register.
+**Le mot de passe de tous les comptes seedés est `azerty123`.**
 
-```bash
-docker exec -i shopify_db mysql -ushopify_user -pshopify_password shopify_db \
-  < symfony/sql/init_roles.sql
+| Rôle           | Email                     | Mot de passe   |
+|----------------|---------------------------|----------------|
+| `ROLE_ADMIN`   | `admin@sportify.fr`       | `azerty123`    |
+| `ROLE_COACH`   | `camille@coach.fr`        | `azerty123`    |
+| `ROLE_CLIENT`  | `lea@client.fr`           | `azerty123`    |
 
-# Ou depuis l'host avec mysql client (port 3307) :
-# mysql -h 127.0.0.1 -P 3307 -ushopify_user -pshopify_password shopify_db \
-#   < symfony/sql/init_roles.sql
-```
+**Autres coachs** : `theo@coach.fr` · `ines@coach.fr` · `hugo@coach.fr` · `sarah@coach.fr`
+**Autres clients** : `antoine@client.fr` · `marie@client.fr` · `yanis@client.fr` · `elodie@client.fr`
 
-Le script est idempotent (`ON DUPLICATE KEY UPDATE`), tu peux le relancer.
+Quand tu te connectes :
 
-Vérifier :
-
-```bash
-docker exec shopify_db mysql -ushopify_user -pshopify_password shopify_db \
-  -e "SELECT * FROM role"
-```
-
-Tu dois voir `ROLE_ADMIN` et `ROLE_CLIENT`.
+- L'admin est redirigé vers `/admin` (gestion users / coachs / séances + édition de rôles)
+- Le coach est redirigé vers `/coach` (planning, création de séance)
+- Le client est redirigé vers `/me/reservations` (ses réservations à venir + historique)
 
 ---
 
-## 4. Tester l'API avec `api.rest`
+## Tests automatisés
 
-Ouvre `symfony/api.rest` dans VS Code (extension **REST Client** requise) et
-exécute les requêtes dans l'ordre.
+Les tests PHPUnit couvrent les endpoints critiques : auth (register, login, mauvais mot de passe), CRUD réservation, validations métier (créneaux qui se chevauchent, capacité dépassée).
 
-### 4.1 Register — créer un client
+Lancer la suite complète avec sortie colorée (vert si OK, rouge si fail) :
 
-Section **1.1** du `.rest` :
-
-```http
-POST {{baseUrl}}/api/users
-Content-Type: application/ld+json
-
-{
-  "firstName": "Jean",
-  "lastName":  "Dupont",
-  "email":     "jean@test.com",
-  "password":  "azerty123"
-}
+```bash
+docker exec shopify_php php bin/phpunit --colors=always --testdox
 ```
 
-→ retourne `201 Created`. Le password est hashé automatiquement et le rôle
-`ROLE_CLIENT` est rattaché.
+Options utiles :
 
-### 4.2 Login — récupérer le JWT
+```bash
+# Filtrer une seule classe de test
+docker exec shopify_php php bin/phpunit --colors=always --filter ReservationTest
 
-Section **1.3** :
+# Verbose : affiche chaque assertion
+docker exec shopify_php php bin/phpunit --colors=always --testdox --debug
 
-```http
-POST {{baseUrl}}/api/login_check
-Content-Type: application/json
-
-{
-  "email":    "jean@test.com",
-  "password": "azerty123"
-}
+# Avec reporting de couverture (nécessite xdebug)
+docker exec shopify_php php bin/phpunit --colors=always --coverage-text
 ```
 
-→ retourne `{ "token": "eyJ..." }`. Le token est extrait dans la variable
-`{{token}}` automatiquement par REST Client.
-
-### 4.3 Appeler une route protégée
-
-```http
-GET {{baseUrl}}/api/users/1
-Authorization: Bearer {{token}}
-```
+Le périmètre des tests est documenté dans `symfony/tests/TESTS.md`.
 
 ---
 
 ## Endpoints publics vs protégés
 
-| Méthode + Path           | Accès               |
-|--------------------------|---------------------|
-| `POST /api/login_check`  | public              |
-| `POST /api/users`        | public (register)   |
-| `GET  /api/coaches`      | public              |
-| `GET  /api/seances`      | public              |
-| `GET  /api/docs`         | public              |
-| tout le reste de `/api`  | JWT requis          |
+| Méthode + Path           | Accès                |
+|--------------------------|----------------------|
+| `POST /api/login_check`  | public               |
+| `POST /api/users`        | public (register)    |
+| `GET  /api/coaches`      | public               |
+| `GET  /api/seances`      | public               |
+| `GET  /api/docs`         | public (Swagger UI)  |
+| `GET  /api/me`           | JWT requis           |
+| tout le reste de `/api`  | JWT requis           |
+| écritures sur `/api/coaches`, `/api/users` | `ROLE_ADMIN`        |
+| écritures sur `/api/seances`               | `ROLE_ADMIN` ou `ROLE_COACH` |
 
 Configuré dans `symfony/config/packages/security.yaml`.
 
 ---
 
-## Promouvoir un user en admin
+## Tester l'API à la main
 
-Une fois un user créé (ex `admin@test.com`), attache-lui `ROLE_ADMIN` :
+`symfony/api.rest` est un fichier prêt à l'emploi pour l'extension **REST Client** de VS Code. Il enchaîne register → login → appels protégés en récupérant automatiquement le JWT.
+
+L'interface Swagger générée par API Platform est accessible sur **http://localhost:8080/api/docs**.
+
+---
+
+## Promouvoir un compte existant en admin (sans passer par le seed)
 
 ```bash
 docker exec shopify_db mysql -ushopify_user -pshopify_password shopify_db -e \
   "INSERT INTO user_role (user_id, role_id)
    SELECT u.id, r.id FROM user u, role r
-   WHERE u.email='admin@test.com' AND r.name='ROLE_ADMIN'"
+   WHERE u.email='ton@email.fr' AND r.name='ROLE_ADMIN'"
 ```
+
+---
+
+## Stack
+
+- **Backend** : Symfony 7.2 · API Platform 4.1 · Doctrine ORM 3 · MySQL 8 · Lexik JWT 3.2 · Nelmio CORS · PHP 8.2+
+- **Frontend** : React 18 · Vite 5 · axios 1.7 · ESM natif, pas de Babel runtime
+- **Conteneurisation** : Docker Compose (DB + PHP-FPM + Nginx)
+- **Tests** : PHPUnit

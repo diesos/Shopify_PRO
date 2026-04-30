@@ -40,6 +40,10 @@ class Coach implements PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255)]
     #[Groups(['coach:read', 'coach:write'])]
     #[Assert\NotBlank]
+    #[Assert\Regex(
+        pattern: '/^\+?[\d\s.\-()]{8,20}$/',
+        message: 'Numéro de téléphone invalide (chiffres, espaces, + - . ( ) uniquement).',
+    )]
     private ?string $phone = null;
 
     #[ORM\Column(length: 180, unique: true)]

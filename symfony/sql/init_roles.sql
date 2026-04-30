@@ -9,5 +9,6 @@
 
 INSERT INTO role (name, label) VALUES
     ('ROLE_ADMIN',  'Administrateur'),
+    ('ROLE_COACH',  'Coach'),
     ('ROLE_CLIENT', 'Client')
 ON DUPLICATE KEY UPDATE label = VALUES(label);

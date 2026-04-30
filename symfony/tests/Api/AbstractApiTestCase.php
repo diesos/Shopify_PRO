@@ -5,6 +5,7 @@ namespace App\Tests\Api;
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use ApiPlatform\Symfony\Bundle\Test\Client;
 use App\Entity\Role;
+use App\Entity\Seance;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
@@ -21,6 +22,16 @@ abstract class AbstractApiTestCase extends ApiTestCase
         $this->em = static::getContainer()->get('doctrine')->getManager();
         $this->resetDatabase();
         $this->seedRoles();
+    }
+
+    public static function createClient(array $kernelOptions = [], array $defaultOptions = []): Client
+    {
+        $defaultOptions['headers'] = array_merge(
+            ['accept' => 'application/json'],
+            $defaultOptions['headers'] ?? [],
+        );
+
+        return parent::createClient($kernelOptions, $defaultOptions);
     }
 
     protected function resetDatabase(): void
@@ -82,5 +93,20 @@ abstract class AbstractApiTestCase extends ApiTestCase
         $token = $this->login($email, $password);
 
         return static::createClient([], ['headers' => ['Authorization' => 'Bearer '.$token]]);
+    }
+
+    protected function createSeance(int $maxUser = 10, string $start = '2026-05-15T09:00:00+02:00', string $end = '2026-05-15T10:00:00+02:00'): Seance
+    {
+        $seance = (new Seance())
+            ->setName('Yoga matinal')
+            ->setCoachId(1)
+            ->setMaxUser($maxUser)
+            ->setStartTime(new \DateTime($start))
+            ->setEndTime(new \DateTime($end));
+
+        $this->em->persist($seance);
+        $this->em->flush();
+
+        return $seance;
     }
 }

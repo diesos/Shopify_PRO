@@ -12,7 +12,7 @@ final class AuthApiTest extends AbstractApiTestCase
         $client = static::createClient();
 
         $client->request('POST', '/api/users', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => [
                 'firstName' => 'Jean',
                 'lastName' => 'Dupont',
@@ -39,7 +39,7 @@ final class AuthApiTest extends AbstractApiTestCase
         $this->createUser('jean@test.com');
 
         static::createClient()->request('POST', '/api/users', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => [
                 'firstName' => 'Autre',
                 'lastName' => 'Jean',
@@ -54,7 +54,7 @@ final class AuthApiTest extends AbstractApiTestCase
     public function testRegisterRejectsInvalidEmail(): void
     {
         static::createClient()->request('POST', '/api/users', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => [
                 'firstName' => 'Jean',
                 'lastName' => 'Dupont',
@@ -69,7 +69,7 @@ final class AuthApiTest extends AbstractApiTestCase
     public function testRegisterRejectsShortPassword(): void
     {
         static::createClient()->request('POST', '/api/users', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => [
                 'firstName' => 'Jean',
                 'lastName' => 'Dupont',

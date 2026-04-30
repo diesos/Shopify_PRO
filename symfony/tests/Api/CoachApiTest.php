@@ -17,7 +17,7 @@ final class CoachApiTest extends AbstractApiTestCase
     public function testCreateCoachRequiresAuth(): void
     {
         static::createClient()->request('POST', '/api/coaches', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => $this->coachPayload(),
         ]);
 
@@ -30,12 +30,43 @@ final class CoachApiTest extends AbstractApiTestCase
 
         $client = $this->authenticatedClient('admin@test.com', 'admin123');
         $client->request('POST', '/api/coaches', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => $this->coachPayload(),
         ]);
 
         $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->assertJsonContains(['firstName' => 'Sophie', 'email' => 'sophie@coach.com']);
+    }
+
+    public function testCreateCoachAsClientIsForbidden(): void
+    {
+        $this->createUser('jean@test.com');
+
+        $client = $this->authenticatedClient('jean@test.com');
+        $client->request('POST', '/api/coaches', [
+            'headers' => ['Content-Type' => 'application/json'],
+            'json' => $this->coachPayload(),
+        ]);
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testCreateCoachRejectsDuplicateEmail(): void
+    {
+        $this->createUser('admin@test.com', 'admin123', ['ROLE_ADMIN']);
+        $client = $this->authenticatedClient('admin@test.com', 'admin123');
+
+        $client->request('POST', '/api/coaches', [
+            'headers' => ['Content-Type' => 'application/json'],
+            'json' => $this->coachPayload(),
+        ]);
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $client->request('POST', '/api/coaches', [
+            'headers' => ['Content-Type' => 'application/json'],
+            'json' => $this->coachPayload(),
+        ]);
+        $this->assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     public function testGetCoachById(): void

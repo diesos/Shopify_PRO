@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Repository\ReservationRepository;
+use App\Validator\ReservationConstraints;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -23,6 +24,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Delete(security: "is_granted('ROLE_ADMIN') or is_granted('ROLE_COACH') or object.getUser() == user"),
     ],
 )]
+#[ReservationConstraints]
 class Reservation
 {
     #[ORM\Id]

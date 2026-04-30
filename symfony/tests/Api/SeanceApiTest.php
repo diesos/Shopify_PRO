@@ -17,7 +17,7 @@ final class SeanceApiTest extends AbstractApiTestCase
     public function testCreateSeanceRequiresAuth(): void
     {
         static::createClient()->request('POST', '/api/seances', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => $this->seancePayload(),
         ]);
 
@@ -30,12 +30,38 @@ final class SeanceApiTest extends AbstractApiTestCase
 
         $client = $this->authenticatedClient('admin@test.com', 'admin123');
         $client->request('POST', '/api/seances', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => $this->seancePayload(),
         ]);
 
         $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->assertJsonContains(['name' => 'Yoga matinal']);
+    }
+
+    public function testCreateSeanceAsCoach(): void
+    {
+        $this->createUser('coach@test.com', 'coachpass', ['ROLE_COACH']);
+
+        $client = $this->authenticatedClient('coach@test.com', 'coachpass');
+        $client->request('POST', '/api/seances', [
+            'headers' => ['Content-Type' => 'application/json'],
+            'json' => $this->seancePayload(),
+        ]);
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    public function testCreateSeanceAsClientIsForbidden(): void
+    {
+        $this->createUser('jean@test.com');
+
+        $client = $this->authenticatedClient('jean@test.com');
+        $client->request('POST', '/api/seances', [
+            'headers' => ['Content-Type' => 'application/json'],
+            'json' => $this->seancePayload(),
+        ]);
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
 
     public function testGetSeanceById(): void

@@ -31,7 +31,7 @@ final class RoleApiTest extends AbstractApiTestCase
 
         $client = $this->authenticatedClient('admin@test.com', 'admin123');
         $client->request('POST', '/api/roles', [
-            'headers' => ['Content-Type' => 'application/ld+json'],
+            'headers' => ['Content-Type' => 'application/json'],
             'json' => ['name' => 'ROLE_MANAGER', 'label' => 'Gestionnaire'],
         ]);
 

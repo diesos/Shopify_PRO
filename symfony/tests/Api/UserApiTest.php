@@ -20,10 +20,10 @@ final class UserApiTest extends AbstractApiTestCase
         $this->createUser('jean@test.com');
 
         $client = $this->authenticatedClient('admin@test.com', 'admin123');
-        $client->request('GET', '/api/users');
+        $response = $client->request('GET', '/api/users');
 
         $this->assertResponseIsSuccessful();
-        $this->assertJsonContains(['@type' => 'Collection']);
+        $this->assertGreaterThanOrEqual(2, count($response->toArray()));
     }
 
     public function testGetUserById(): void
@@ -61,5 +61,26 @@ final class UserApiTest extends AbstractApiTestCase
 
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertNull($this->em->getRepository(User::class)->find($target->getId()));
+    }
+
+    public function testListUsersAsClientIsForbidden(): void
+    {
+        $this->createUser('jean@test.com');
+
+        $client = $this->authenticatedClient('jean@test.com');
+        $client->request('GET', '/api/users');
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testDeleteUserAsClientIsForbidden(): void
+    {
+        $this->createUser('jean@test.com');
+        $target = $this->createUser('paul@test.com');
+
+        $client = $this->authenticatedClient('jean@test.com');
+        $client->request('DELETE', '/api/users/'.$target->getId());
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
 }

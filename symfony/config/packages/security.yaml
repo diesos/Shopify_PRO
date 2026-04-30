@@ -41,7 +41,7 @@ security:
         - { path: ^/api/coaches, methods: [GET], roles: PUBLIC_ACCESS }
         - { path: ^/api/coaches, methods: [POST, PATCH, PUT, DELETE], roles: ROLE_ADMIN }
         - { path: ^/api/seances, methods: [GET], roles: PUBLIC_ACCESS }
-        - { path: ^/api/seances, methods: [POST, PATCH, PUT, DELETE], roles: ROLE_ADMIN }
+        - { path: ^/api/seances, methods: [POST, PATCH, PUT, DELETE], roles: [ROLE_ADMIN, ROLE_COACH] }
         - { path: ^/api/roles, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
